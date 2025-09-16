@@ -52,6 +52,9 @@ struct Encoder<B> {
 
     /// Min buffer required to attempt to write a frame
     min_buffer_capacity: usize,
+
+    /// Flag to control force flushing frames
+    force_flush: bool,
 }
 
 #[derive(Debug)]
@@ -99,6 +102,7 @@ where
                 max_frame_size: frame::DEFAULT_MAX_FRAME_SIZE,
                 chain_threshold,
                 min_buffer_capacity: chain_threshold + frame::HEADER_LEN,
+                force_flush: false,
             },
         }
     }
@@ -131,6 +135,24 @@ where
     /// Flush buffered data to the wire
     pub fn flush(&mut self, cx: &mut Context) -> Poll<io::Result<()>> {
         let _span = tracing::trace_span!("FramedWrite::flush");
+
+        if self.encoder.force_flush && !self.encoder.is_empty() {
+            ready!(poll_write_buf(
+                Pin::new(&mut self.inner),
+                cx,
+                &mut self.encoder.buf
+            ))?;
+
+            if self.encoder.is_empty() {
+                self.encoder.unset_frame();
+            }
+
+            tracing::trace!("flushing buffer (forced)");
+            ready!(Pin::new(&mut self.inner).poll_flush(cx))?;
+
+            self.encoder.force_flush = false;
+            return Poll::Ready(Ok(()));
+        }
 
         loop {
             while !self.encoder.is_empty() {
@@ -255,6 +277,7 @@ where
                 }
             }
             Frame::Headers(v) => {
+                self.force_flush = true;
                 let mut buf = limited_write_buf!(self);
                 if let Some(continuation) = v.encode(&mut self.hpack, &mut buf) {
                     self.next = Some(Next::Continuation(continuation));
@@ -267,6 +290,7 @@ where
                 }
             }
             Frame::Settings(v) => {
+                self.force_flush = true;
                 v.encode(self.buf.get_mut());
                 tracing::trace!(rem = self.buf.remaining(), "encoded settings");
             }
@@ -279,6 +303,7 @@ where
                 tracing::trace!(rem = self.buf.remaining(), "encoded ping");
             }
             Frame::WindowUpdate(v) => {
+                self.force_flush = true;
                 v.encode(self.buf.get_mut());
                 tracing::trace!(rem = self.buf.remaining(), "encoded window_update");
             }
