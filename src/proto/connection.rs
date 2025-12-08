@@ -133,6 +133,10 @@ where
             }
         }
         let streams = Streams::new(streams_config(&config));
+        #[cfg(feature = "tracing")]
+        let span = tracing::debug_span!(parent: None, "Connection", peer = %P::NAME);
+        #[cfg(feature = "tracing")]
+        span.follows_from(tracing::Span::current());
         Connection {
             codec,
             inner: ConnectionInner {
@@ -143,7 +147,7 @@ where
                 settings: Settings::new(config.settings),
                 streams,
                 #[cfg(feature = "tracing")]
-                span: ::tracing::debug_span!("Connection", peer = %P::NAME),
+                span,
                 _phantom: PhantomData,
             },
         }
