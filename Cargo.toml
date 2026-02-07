@@ -3,7 +3,7 @@ name = "http2"
 # When releasing to crates.io:
 # - Update CHANGELOG.md.
 # - Create git tag
-version = "0.5.8"
+version = "0.5.11"
 license = "MIT"
 authors = ["0x676e67 <gngppz@gmail.com>"]
 description = "An HTTP/2 client and server"
@@ -14,7 +14,7 @@ keywords = ["http", "http2", "async", "non-blocking"]
 categories = ["asynchronous", "web-programming", "network-programming"]
 exclude = ["fixtures/**", "ci/**"]
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.68"
 
 [features]
 # Enables `futures::Stream` implementations for various types.
