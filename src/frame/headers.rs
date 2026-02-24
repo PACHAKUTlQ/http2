@@ -76,7 +76,7 @@ pub struct Pseudo {
     pub status: Option<StatusCode>,
 
     // Pseudo order
-    order: PseudoOrder,
+    pub order: PseudoOrder,
 }
 
 define_enum_with_values! {
